@@ -1,3 +1,4 @@
+{{- if or .Values.configFiles .Values.fixedConfigFiles -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -8,6 +9,22 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
 data:
+{{- if .Values.fixedConfigFiles -}}
+{{- range $key, $value := .Values.fixedConfigFiles }}
+  {{- if typeIs "string" $value }}
+    {{ $key }}: {{ $value | quote }}
+  {{- else }}
+    {{ $key }}: {{ $value | toYaml | quote }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- if .Values.configFiles -}}
 {{- range $key, $value := .Values.configFiles }}
-  {{ $key }}: {{ $value | quote }}
+  {{- if typeIs "string" $value }}
+    {{ $key }}: {{ $value | quote }}
+  {{- else }}
+    {{ $key }}: {{ $value | toYaml | quote }}
+  {{- end }}
+{{- end }}
+{{- end }}
 {{- end }}

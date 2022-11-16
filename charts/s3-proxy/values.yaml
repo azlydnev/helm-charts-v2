@@ -6,9 +6,10 @@ replicaCount: 1
 
 image:
   repository: oxynozeta/s3-proxy
-  tag: 4.1.0
+  tag: 4.6.0
   pullPolicy: IfNotPresent
 
+imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
@@ -25,6 +26,7 @@ serviceAccount:
 service:
   type: ClusterIP
   port: 80
+  targetPort: "http"
   # nodePort: 8888
   # clusterIP:
   # externalIPs: []
@@ -83,11 +85,102 @@ env:
   # Example
   # VARIABLE: VALUE
 
+envFrom:
+  []
+  # Example (see https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#environment-variables)
+  # - secretRef:
+  #     name: mysecret
+  # - configMapRef:
+  #     name: myconfigmap
+
 #
 # See configuration of project: https://oxyno-zeta.github.io/s3-proxy/
 #
+# Note: This is used mainly for configuration parts that cannot be hot reloaded.
+#       For example, the server parts like SSL/TLS configuration, ...
+#       Or simply because you prefer to have it static and force a force reload of application.
+fixedConfigFiles:
+  {}
+  # server.yaml: |-
+  #   # Server configurations
+  #   # server:
+  #   #   # SSL/TLS configuration
+  #   #   ssl:
+  #   #     # Is SSL/TLS configuration enabled ?
+  #   #     enabled: true
+  #   #     # Certificates to serve when connected
+  #   #     certificates:
+  #   #       - # Note: Exactly one of certificate/certificateUrl and privateKey/privateKeyUrl must be specified.
+  #   #         # The PEM encoded certificate
+  #   #         certificate: |
+  #   #           -----BEGIN CERTIFICATE-----
+  #   #           ....
+  #   #           -----END CERTIFICATE-----
+  #   #         # The URL of a resource containing the certificate
+  #   #         # Check other URL types in documentation
+  #   #         certificateUrl: arn:aws:ssm:region:accountId:parameter/name
+  #   #         # Additional URL configuration if certificateUrl is an S3 URL
+  #   #         certificateUrlConfig:
+  #   #           # Timeout for HTTP connections (including AWS calls) to get SSL certificate/keys
+  #   #           httpTimeout:
+  #   #           # AWS region for S3/SSM/Secrets Manager-stored documents
+  #   #           awsRegion: us-east-1
+  #   #           # Custom endpoint for S3/SSM/Secrets Manager API calls
+  #   #           awsEndpoint:
+  #   #           # Credentials to access AWS-based documents
+  #   #           awsCredentials:
+  #   #             accessKey:
+  #   #               env: AWS_ACCESS_KEY_ID
+  #   #             secretKey:
+  #   #               path: secret_key_file
+  #   #           # Disable SSL for AWS API calls. This does not affect `https` URLs
+  #   #           awsDisableSSL: false
+  #   #         # The PEM encoded private key
+  #   #         privateKey: |
+  #   #           -----BEGIN RSA PRIVATE KEY-----
+  #   #           -----END RSA PRIVATE KEY-----
+  #   #         # Additional URL configuration if privateKeyUrl is an S3 URL
+  #   #         # Check other URL types in documentation
+  #   #         privateKeyUrl: arn:aws:secretsmanager:region:accountId:secret/name
+  #   #         # Additional URL configuration if privateKeyUrl is an S3 URL
+  #   #         privateKeyUrlConfig:
+  #   #           # Timeout for HTTP connections (including AWS calls) to get SSL certificate/keys
+  #   #           httpTimeout:
+  #   #           # AWS region for S3/SSM/Secrets Manager-stored documents
+  #   #           awsRegion: us-east-1
+  #   #           # Custom endpoint for S3/SSM/Secrets Manager API calls
+  #   #           awsEndpoint:
+  #   #           # Credentials to access AWS-based documents
+  #   #           awsCredentials:
+  #   #             accessKey:
+  #   #               env: AWS_ACCESS_KEY_ID
+  #   #             secretKey:
+  #   #               path: secret_key_file
+  #   #           # Disable SSL for AWS API calls. This does not affect `https` URLs
+  #   #           awsDisableSSL: false
+  #   #     # List of hostnames to generate self-signed certificates for
+  #   #     selfSignedHostnames:
+  #   #       - localhost
+  #   #       - localhost.localdomain
+  #   #     # The minimum TLS version to allow when a client connects
+  #   #     minTLSVersion: TLSv1.2
+  #   #     # The maximum TLS version to allow when a client connects
+  #   #     maxTLSVersion: TLSv1.3
+  #   #     # The TLS ciphers to enable
+  #   #     cipherSuites: # See https://pkg.go.dev/crypto/tls#pkg-constants for valid names; the current default is shown below.
+  #   #       - TLS_AES_128_GCM_SHA256
+  #   #       - TLS_AES_256_GCM_SHA384
+  #   #       - TLS_CHACHA20_POLY1305_SHA256
+  #   #       - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+  #   #       - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+  #   #       - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
+
+#
+# See configuration of project: https://oxyno-zeta.github.io/s3-proxy/
+#
+# Note: This can put as blank. The application can start without any configuration.
 configFiles:
-  config.yaml: |-
+  config.yaml:
     # Log configuration
     log:
       # Log level
@@ -97,6 +190,12 @@ configFiles:
 
     # Server configurations
     # server:
+    #   # Server timeout options
+    #   timeouts:
+    #     readTimeout: ""
+    #     readHeaderTimeout: ""
+    #     writeTimeout: ""
+    #     idleTimeout: ""
     #   # Compress options
     #   compress:
     #     enabled: true
@@ -160,33 +259,57 @@ configFiles:
     #     path: templates/target-list.tpl
     #     headers:
     #       Content-Type: '{{ template "main.headers.contentType" . }}'
+    #     status: "200"
     #   folderList:
     #     path: templates/folder-list.tpl
     #     headers:
     #       Content-Type: '{{ template "main.headers.contentType" . }}'
+    #     status: "200"
     #   badRequestError:
     #     path: templates/bad-request-error.tpl
     #     headers:
     #       Content-Type: '{{ template "main.headers.contentType" . }}'
+    #     status: "400"
     #   forbiddenError:
     #     path: templates/forbidden-error.tpl
     #     headers:
     #       Content-Type: '{{ template "main.headers.contentType" . }}'
+    #     status: "403"
     #   internalServerError:
     #     path: templates/internal-server-error.tpl
     #     headers:
     #       Content-Type: '{{ template "main.headers.contentType" . }}'
+    #     status: "500"
     #   notFoundError:
     #     path: templates/not-found-error.tpl
     #     headers:
     #       Content-Type: '{{ template "main.headers.contentType" . }}'
+    #     status: "404"
     #   unauthorizedError:
     #     path: templates/unauthorized-error.tpl
     #     headers:
     #       Content-Type: '{{ template "main.headers.contentType" . }}'
+    #     status: "401"
+    #   put:
+    #     path: templates/put.tpl
+    #     headers: {}
+    #     status: "204"
+    #   delete:
+    #     path: templates/delete.tpl
+    #     headers: {}
+    #     status: "204"
 
     # Authentication Providers
     # authProviders:
+    #   # Header providers
+    #   # This authentication method should be used only with a software like [Oauth2-proxy](https://github.com/oauth2-proxy/oauth2-proxy) or an authentication gateway that put headers with user information inside.
+    #   # Warning: S3-proxy won't validate headers value or anything else. It will take values as they are coming.
+    #   header:
+    #     oauth2-proxy:
+    #       usernameHeader: x-forwarded-preferred-username
+    #       emailHeader: x-forwarded-email
+    #       groupsHeader: x-forwarded-groups
+    #   # OIDC providers
     #   oidc:
     #     provider1:
     #       clientID: client-id
@@ -200,11 +323,13 @@ configFiles:
     #         - email
     #         - profile
     #       groupClaim: groups # path in token
+    #       # cookieDomains: [] # Cookie domains matching the request host
     #       # cookieSecure: true # Is the cookie generated secure ?
     #       # cookieName: oidc # Cookie generated name
     #       emailVerified: true # check email verified field from token
     #       # loginPath: /auth/provider1 # Override login path dynamically generated from provider key
     #       # callbackPath: /auth/provider1/callback # Override callback path dynamically generated from provider key
+    #   # Basic auth providers
     #   basic:
     #     provider2:
     #       realm: My Basic Auth Realm
@@ -238,6 +363,11 @@ configFiles:
     #       # NOTE: This list can be empty ([]) for authentication only and no group filter
     #       authorizationAccesses: # Authorization accesses : groups or email or regexp
     #         - group: devops_users
+    #     # Header section for access filter
+    #     header:
+    #       # NOTE: This list can be empty ([]) for authentication only and no group filter
+    #       authorizationAccesses: # Authorization accesses : groups or email or regexp
+    #         - group: devops_users
     #     # Basic authentication section
     #     basic:
     #       credentials:
@@ -261,7 +391,7 @@ configFiles:
         #   - path: /
         #     # Whitelist
         #     whiteList: true
-        #     # A Path must be declared for a resource filtering (a wildcard can be added to match every sub path)
+        #   # A Path must be declared for a resource filtering (a wildcard can be added to match every sub path)
         #   - path: /specific_doc/*
         #     # HTTP Methods authorized (Must be in GET, PUT or DELETE)
         #     methods:
@@ -275,7 +405,7 @@ configFiles:
         #       # NOTE: This list can be empty ([]) for authentication only and no group filter
         #       authorizationAccesses: # Authorization accesses : groups or email or regexp
         #         - group: specific_users
-        #     # A Path must be declared for a resource filtering (a wildcard can be added to match every sub path)
+        #   # A Path must be declared for a resource filtering (a wildcard can be added to match every sub path)
         #   - path: /directory1/*
         #     # HTTP Methods authorized (Must be in GET, PUT or DELETE)
         #     methods:
@@ -290,10 +420,32 @@ configFiles:
         #         - user: user1
         #           password:
         #             path: password1-in-file
-        #     # A Path must be declared for a resource filtering (a wildcard can be added to match every sub path)
+        #   # A Path must be declared for a resource filtering (a wildcard can be added to match every sub path)
         #   - path: /opa-protected/*
         #     # OIDC section for access filter
         #     oidc:
+        #       # Authorization through OPA server configuration
+        #       authorizationOPAServer:
+        #         # OPA server url with data path
+        #         url: http://localhost:8181/v1/data/example/authz/allowed
+        #   # A Path must be declared for a resource filtering (a wildcard can be added to match every sub path)
+        #   - path: /specific_doc/*
+        #     # HTTP Methods authorized (Must be in GET, PUT or DELETE)
+        #     methods:
+        #       - GET
+        #       - PUT
+        #       - DELETE
+        #     # A authentication provider declared in section before, here is the key name
+        #     provider: provider1
+        #     # Header section for access filter
+        #     header:
+        #       # NOTE: This list can be empty ([]) for authentication only and no group filter
+        #       authorizationAccesses: # Authorization accesses : groups or email or regexp
+        #         - group: specific_users
+        #   # A Path must be declared for a resource filtering (a wildcard can be added to match every sub path)
+        #   - path: /opa-protected/*
+        #     # Header section for access filter
+        #     header:
         #       # Authorization through OPA server configuration
         #       authorizationOPAServer:
         #         # OPA server url with data path
@@ -346,6 +498,10 @@ configFiles:
         # keyRewriteList:
         #   - # Source represents a Regexp (golang format with group naming support)
         #     source: ^/(?P<one>\w+)/(?P<two>\w+)/(?P<three>\w+)?$
+        #     # Target type: Regex or Template
+        #     # Regex will allow to do a simple regex replace/update, like in the example
+        #     # Template will allow to do golang template replace, like this example as "target" value: {{ regexReplaceAll "/input1(/.*)" .Key (printf "/input1/%s${1}" .User.Username) }}
+        #     # targetType: REGEX # TEMPLATE
         #     # Target represents the template of the new key that will be used
         #     target: /$two/$one/$three/$one/
         ## Target custom templates
@@ -359,31 +515,49 @@ configFiles:
         #     inBucket: false
         #     path: ""
         #     headers: {}
+        #     status: "200"
         #   # Not found error template
         #   notFoundError:
         #     inBucket: false
         #     path: ""
         #     headers: {}
+        #     status: "404"
         #   # Internal server error template
         #   internalServerError:
         #     inBucket: false
         #     path: ""
         #     headers: {}
+        #     status: "500"
         #   # Forbidden error template
         #   forbiddenError:
         #     inBucket: false
         #     path: ""
         #     headers: {}
+        #     status: "403"
         #   # Unauthorized error template
         #   unauthorizedError:
         #     inBucket: false
         #     path: ""
         #     headers: {}
+        #     status: "401"
         #   # Bad Request error template
         #   badRequestError:
         #     inBucket: false
         #     path: ""
         #     headers: {}
+        #     status: "400"
+        #   # PUT template
+        #   put:
+        #     inBucket: false
+        #     path: ""
+        #     headers: {}
+        #     status: "204"
+        #   # DELETE template
+        #   delete:
+        #     inBucket: false
+        #     path: ""
+        #     headers: {}
+        #     status: "204"
         ## Bucket configuration
         bucket:
           name: super-bucket
@@ -458,6 +632,9 @@ podAnnotations:
   # prometheus.io/path: "/metrics"
   # prometheus.io/port: "9090"
 
+# Extra pod labels.
+podLabels: {}
+
 grafana:
   # Use this only if you are using the Grafana operator from https://github.com/integr8ly/grafana-operator
   operator:
@@ -486,3 +663,39 @@ deploymentStrategy:
   # rollingUpdate:
   #   maxSurge: 1
   #   maxUnavailable: 0
+
+podSecurityContext:
+  fsGroup: 1000
+
+# This is the declaration of the default volumes mount paths
+# in the s3-proxy container in pod.
+# This can be override for sidecar usage for example, init containers, ...
+# Use this with extra volumes feature.
+# Note: This doesn't change the fact that the application will use the /proxy/conf
+# directory to find the configurations.
+volumeMountPaths:
+  configurations: /proxy/conf
+  secrets: /proxy/secret-files
+  customTemplates: /proxy/custom-templates
+
+# This can be used to declare extra volumes.
+extraVolumes:
+  []
+  # - name: test
+  #   emptyDir: {}
+
+# This is for extra mounts in the s3-proxy containers only.
+# Sidecars or init containers have their own declarations.
+extraVolumesMounts:
+  []
+  # - name: test
+  #   mountPath: "/test"
+
+# Init containers declarations.
+initContainers: []
+
+# Scheduler name
+schedulerName: ""
+
+# Priority class name.
+priorityClassName: ""
